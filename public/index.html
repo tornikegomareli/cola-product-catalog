@@ -160,13 +160,64 @@
       transform: translateY(-2px);
     }
 
-    .card-image {
+    .card-image-wrapper {
+      position: relative;
       width: 100%;
       aspect-ratio: 1;
-      object-fit: contain;
       background: #fff;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .card-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
       padding: 12px;
       display: block;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .card-image.loaded {
+      opacity: 1;
+    }
+
+    /* Skeleton loader */
+    .card-image-wrapper::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    .card-image-wrapper.loaded::before {
+      display: none;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    .zoom-hint {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: rgba(0, 0, 0, 0.65);
+      color: #fff;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+
+    .card-image-wrapper:hover .zoom-hint {
+      opacity: 1;
     }
 
     .card-body {
@@ -218,6 +269,113 @@
       width: 14px;
       height: 14px;
       flex-shrink: 0;
+    }
+
+    /* Modal / Lightbox */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      cursor: zoom-out;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-content {
+      position: relative;
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: default;
+    }
+
+    .modal-image {
+      max-width: 100%;
+      max-height: 80vh;
+      object-fit: contain;
+      border-radius: 8px;
+      background: #fff;
+      padding: 16px;
+    }
+
+    .modal-loading {
+      color: #8b949e;
+      font-size: 14px;
+      padding: 40px;
+    }
+
+    .modal-loading .spinner {
+      margin-bottom: 12px;
+    }
+
+    .modal-info {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .modal-name {
+      font-size: 16px;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      color: #f0f3f6;
+    }
+
+    .modal-copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      background: #238636;
+      color: #fff;
+      border: 1px solid #2ea043;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    .modal-copy-btn:hover {
+      background: #2ea043;
+    }
+
+    .modal-copy-btn.copied {
+      background: #1f6feb;
+      border-color: #388bfd;
+    }
+
+    .modal-copy-btn svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: -40px;
+      right: 0;
+      background: none;
+      border: none;
+      color: #8b949e;
+      font-size: 28px;
+      cursor: pointer;
+      padding: 4px 8px;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      color: #f0f3f6;
     }
 
     /* Empty state */
@@ -283,7 +441,7 @@
       transform: translateY(8px);
       transition: opacity 0.25s, transform 0.25s;
       pointer-events: none;
-      z-index: 200;
+      z-index: 600;
     }
 
     .toast.show {
@@ -300,6 +458,10 @@
       .header h1 {
         font-size: 18px;
       }
+      .modal-info {
+        flex-direction: column;
+        gap: 8px;
+      }
     }
   </style>
 </head>
@@ -308,7 +470,7 @@
   <div class="header">
     <div class="header-inner">
       <h1>Product Catalog</h1>
-      <div class="subtitle">Labeling Reference Guide</div>
+      <div class="subtitle">Labeling Reference Guide &mdash; click image for full quality</div>
       <div class="stats">
         <span>Total: <span class="count" id="totalCount">-</span></span>
         <span>Showing: <span class="count" id="showingCount">-</span></span>
@@ -339,6 +501,22 @@
     </div>
   </div>
 
+  <!-- Full quality modal -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal-content">
+      <button class="modal-close" id="modalClose" title="Close">&times;</button>
+      <div class="modal-loading" id="modalLoading">
+        <div class="spinner"></div>
+        <div>Loading full quality image...</div>
+      </div>
+      <img class="modal-image" id="modalImage" style="display:none;" alt="">
+      <div class="modal-info">
+        <span class="modal-name" id="modalName"></span>
+        <button class="modal-copy-btn" id="modalCopyBtn"></button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast">Copied to clipboard!</div>
 
   <script>
@@ -348,6 +526,14 @@
     const totalCount = document.getElementById('totalCount');
     const showingCount = document.getElementById('showingCount');
     const toast = document.getElementById('toast');
+
+    // Modal elements
+    const modal = document.getElementById('modal');
+    const modalImage = document.getElementById('modalImage');
+    const modalLoading = document.getElementById('modalLoading');
+    const modalName = document.getElementById('modalName');
+    const modalCopyBtn = document.getElementById('modalCopyBtn');
+    const modalClose = document.getElementById('modalClose');
 
     let allProducts = [];
     let toastTimeout = null;
@@ -366,15 +552,7 @@
     async function copyToClipboard(name, btn) {
       try {
         await navigator.clipboard.writeText(name);
-        btn.innerHTML = `${checkIcon} Copied!`;
-        btn.classList.add('copied');
-        showToast(`Copied: ${name}`);
-        setTimeout(() => {
-          btn.innerHTML = `${copyIcon} Copy Name`;
-          btn.classList.remove('copied');
-        }, 2000);
-      } catch (err) {
-        // Fallback for non-HTTPS contexts
+      } catch {
         const ta = document.createElement('textarea');
         ta.value = name;
         ta.style.position = 'fixed';
@@ -383,15 +561,56 @@
         ta.select();
         document.execCommand('copy');
         document.body.removeChild(ta);
-        btn.innerHTML = `${checkIcon} Copied!`;
-        btn.classList.add('copied');
-        showToast(`Copied: ${name}`);
-        setTimeout(() => {
-          btn.innerHTML = `${copyIcon} Copy Name`;
-          btn.classList.remove('copied');
-        }, 2000);
       }
+      btn.innerHTML = `${checkIcon} Copied!`;
+      btn.classList.add('copied');
+      showToast(`Copied: ${name}`);
+      setTimeout(() => {
+        btn.innerHTML = `${copyIcon} Copy Name`;
+        btn.classList.remove('copied');
+      }, 2000);
     }
+
+    // Modal functions
+    function openModal(product) {
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+
+      modalName.textContent = product.name;
+      modalCopyBtn.innerHTML = `${copyIcon} Copy Name`;
+      modalCopyBtn.classList.remove('copied');
+      modalCopyBtn.onclick = () => copyToClipboard(product.name, modalCopyBtn);
+
+      // Show loading, hide image
+      modalLoading.style.display = '';
+      modalImage.style.display = 'none';
+
+      // Load full quality image
+      const fullImg = new Image();
+      fullImg.onload = () => {
+        modalImage.src = fullImg.src;
+        modalImage.alt = product.name;
+        modalImage.style.display = '';
+        modalLoading.style.display = 'none';
+      };
+      fullImg.src = `/images/${encodeURIComponent(product.filename)}`;
+    }
+
+    function closeModal() {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+      modalImage.src = '';
+    }
+
+    modalClose.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.classList.contains('open')) {
+        closeModal();
+      }
+    });
 
     function createCard(product) {
       const card = document.createElement('div');
@@ -399,12 +618,15 @@
       card.dataset.name = product.name.toLowerCase();
 
       card.innerHTML = `
-        <img
-          class="card-image"
-          src="/images/${encodeURIComponent(product.filename)}"
-          alt="${product.name}"
-          loading="lazy"
-        >
+        <div class="card-image-wrapper" title="Click for full quality">
+          <img
+            class="card-image"
+            src="/thumbnails/${encodeURIComponent(product.thumbnail)}"
+            alt="${product.name}"
+            loading="lazy"
+          >
+          <span class="zoom-hint">Click for full quality</span>
+        </div>
         <div class="card-body">
           <div class="card-name">${product.name}</div>
           <button class="copy-btn" title="Copy product name to clipboard">
@@ -413,6 +635,18 @@
         </div>
       `;
 
+      // Image load handler for skeleton removal
+      const img = card.querySelector('.card-image');
+      const wrapper = card.querySelector('.card-image-wrapper');
+      img.addEventListener('load', () => {
+        img.classList.add('loaded');
+        wrapper.classList.add('loaded');
+      });
+
+      // Click image to open full-quality modal
+      wrapper.addEventListener('click', () => openModal(product));
+
+      // Copy button
       const btn = card.querySelector('.copy-btn');
       btn.addEventListener('click', () => copyToClipboard(product.name, btn));
 
@@ -471,12 +705,9 @@
 
     // Keyboard shortcut: "/" to focus search
     document.addEventListener('keydown', (e) => {
-      if (e.key === '/' && document.activeElement !== searchInput) {
+      if (e.key === '/' && document.activeElement !== searchInput && !modal.classList.contains('open')) {
         e.preventDefault();
         searchInput.focus();
-      }
-      if (e.key === 'Escape' && document.activeElement === searchInput) {
-        searchInput.blur();
       }
     });
 

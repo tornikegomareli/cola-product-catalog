@@ -4,9 +4,11 @@
   "description": "Product image catalog for labeling reference",
   "scripts": {
     "start": "bun run src/index.ts",
-    "dev": "bun run --watch src/index.ts"
+    "dev": "bun run --watch src/index.ts",
+    "build:thumbnails": "bun run scripts/generate-thumbnails.ts"
   },
   "dependencies": {
-    "hono": "^4.4.0"
+    "hono": "^4.4.0",
+    "sharp": "^0.33.0"
   }
 }
