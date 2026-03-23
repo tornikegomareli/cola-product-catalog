@@ -54,6 +54,7 @@ async function generateThumbnailsForSet(
         const outputPath = join(thumbsDir, `${nameWithoutExt}.webp`);
 
         await sharp(inputPath)
+          .rotate() // auto-fix EXIF orientation
           .resize(THUMBNAIL_WIDTH, undefined, {
             withoutEnlargement: true,
             fit: "inside",
