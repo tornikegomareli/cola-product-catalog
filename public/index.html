@@ -66,6 +66,55 @@
       font-weight: 600;
     }
 
+    /* Tabs */
+    .tabs {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px 24px 0;
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid #30363d;
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #8b949e;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      margin-bottom: -1px;
+    }
+
+    .tab-btn:hover {
+      color: #e1e4e8;
+    }
+
+    .tab-btn.active {
+      color: #f0f3f6;
+      border-bottom-color: #58a6ff;
+    }
+
+    .tab-btn .tab-count {
+      display: inline-block;
+      background: #21262d;
+      color: #8b949e;
+      font-size: 12px;
+      padding: 1px 8px;
+      border-radius: 10px;
+      margin-left: 6px;
+      border: 1px solid #30363d;
+    }
+
+    .tab-btn.active .tab-count {
+      background: #1f6feb;
+      color: #fff;
+      border-color: #388bfd;
+    }
+
     /* Search */
     .search-container {
       max-width: 1400px;
@@ -478,6 +527,11 @@
     </div>
   </div>
 
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="cola">Cola Products <span class="tab-count" id="colaCount">-</span></button>
+    <button class="tab-btn" data-tab="pepsi">Pepsi Products <span class="tab-count" id="pepsiCount">-</span></button>
+  </div>
+
   <div class="search-container">
     <div class="search-wrapper">
       <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -535,8 +589,14 @@
     const modalCopyBtn = document.getElementById('modalCopyBtn');
     const modalClose = document.getElementById('modalClose');
 
-    let allProducts = [];
+    let allProducts = { cola: [], pepsi: [] };
+    let activeTab = 'cola';
     let toastTimeout = null;
+
+    // Tab elements
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const colaCount = document.getElementById('colaCount');
+    const pepsiCount = document.getElementById('pepsiCount');
 
     // SVG icons
     const copyIcon = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></svg>`;
@@ -593,7 +653,8 @@
         modalImage.style.display = '';
         modalLoading.style.display = 'none';
       };
-      fullImg.src = `/images/${encodeURIComponent(product.filename)}`;
+      const imgDir = activeTab === 'pepsi' ? 'images-pepsi' : 'images';
+      fullImg.src = `/${imgDir}/${encodeURIComponent(product.filename)}`;
     }
 
     function closeModal() {
@@ -617,13 +678,16 @@
       card.className = 'card';
       card.dataset.name = product.name.toLowerCase();
 
+      const thumbDir = activeTab === 'pepsi' ? 'thumbnails-pepsi' : 'thumbnails';
+      const imgDir = activeTab === 'pepsi' ? 'images-pepsi' : 'images';
       card.innerHTML = `
         <div class="card-image-wrapper" title="Click for full quality">
           <img
             class="card-image"
-            src="/thumbnails/${encodeURIComponent(product.thumbnail)}"
+            src="/${thumbDir}/${encodeURIComponent(product.thumbnail)}"
             alt="${product.name}"
             loading="lazy"
+            onerror="this.src='/${imgDir}/${encodeURIComponent(product.filename)}'"
           >
           <span class="zoom-hint">Click for full quality</span>
         </div>
@@ -675,14 +739,19 @@
       grid.appendChild(fragment);
     }
 
+    function getActiveProducts() {
+      return allProducts[activeTab] || [];
+    }
+
     function filterProducts(query) {
+      const products = getActiveProducts();
       const q = query.toLowerCase().trim();
       if (!q) {
-        renderProducts(allProducts);
+        renderProducts(products);
         return;
       }
       const terms = q.split(/\s+/);
-      const filtered = allProducts.filter(p => {
+      const filtered = products.filter(p => {
         const name = p.name.toLowerCase();
         return terms.every(t => name.includes(t));
       });
@@ -711,14 +780,31 @@
       }
     });
 
+    // Tab switching
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeTab = btn.dataset.tab;
+        const products = getActiveProducts();
+        totalCount.textContent = products.length;
+        searchInput.value = '';
+        clearBtn.classList.remove('visible');
+        filterProducts('');
+      });
+    });
+
     // Load products
     async function init() {
       try {
         const res = await fetch('/api/products');
         const data = await res.json();
-        allProducts = data.products;
-        totalCount.textContent = data.total;
-        renderProducts(allProducts);
+        allProducts.cola = data.cola.products;
+        allProducts.pepsi = data.pepsi.products;
+        colaCount.textContent = data.cola.total;
+        pepsiCount.textContent = data.pepsi.total;
+        totalCount.textContent = data.cola.total;
+        renderProducts(allProducts.cola);
       } catch (err) {
         grid.innerHTML = `
           <div class="empty">
