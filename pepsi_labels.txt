@@ -27,5 +27,5 @@ pepsi_classic_plastic_0_25L
 pepsi_classic_plastic_0_5L
 pepsi_classic_plastic_1_5L
 pepsi_classic_plastic_1L
-pepsi_classic_plastic_2_25L
+pepsi_classic_plastic_2_5L
 pepsi_lime_plastic_0_5L
